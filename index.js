@@ -1,40 +1,39 @@
 const express = require("express");
-const { exec } = require("child_process");
+const ytdlp = require("yt-dlp-exec");
 const app = express();
 
-// برای پردازش JSON
 app.use(express.json());
 
-// مسیر اصلی برای تست ساده
+// مسیر اصلی
 app.get("/", (req, res) => {
   res.send("Server is running ✅");
 });
 
 // مسیر دانلود واقعی
-app.post("/download", (req, res) => {
+app.post("/download", async (req, res) => {
   const { url, quality } = req.body;
 
   if (!url || !quality) {
     return res.status(400).json({ error: "لینک یا کیفیت ارسال نشده ❌" });
   }
 
-  // اجرای yt-dlp برای گرفتن لینک دانلود
-  exec(`yt-dlp -f "best[height=${quality}]" -g ${url}`, (error, stdout, stderr) => {
-    if (error) {
-      console.error("Download error:", stderr);
-      return res.status(500).json({ error: "خطا در گرفتن لینک دانلود ❌" });
-    }
-
-    const downloadUrl = stdout.trim();
+  try {
+    // اجرای yt-dlp برای گرفتن لینک دانلود
+    const result = await ytdlp(url, {
+      f: `best[height=${quality}]`,
+      g: true
+    });
 
     res.json({
       message: "لینک دانلود آماده شد ✅",
       videoUrl: url,
       quality: quality,
-      downloadUrl: downloadUrl
+      downloadUrl: result.trim()
     });
-  });
+  } catch (err) {
+    console.error("Download error:", err);
+    res.status(500).json({ error: "خطا در گرفتن لینک دانلود ❌" });
+  }
 });
 
-// اجرای سرور
 app.listen(3000, () => console.log("Server running on port 3000"));
